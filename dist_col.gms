@@ -88,9 +88,6 @@ Set j 'components' / methanol, water, PO, PG /;
 
 * ----------------------------- STEP 2 : DEFINE PHYSICAL PROPERTIES -----------------------------
 
-
-Set j 'components' / methanol, water, PO, PG /;
-
 $ontext
 PHYSICAL PROPERTIES CONSTANTS
 PG critical temp and pressure not pertinent
@@ -120,16 +117,30 @@ Table vpcon(j, *) "constants for vapor pressure"
 $ontext
 ISOBARIC HEAT CAPACITY CONSTANTS
 all constants obtained from Perry's Chemical Engineering handbook except for PO.
-Specific heat capacity, CpL = a + b*T +c*power(T,2) + d*power(T,3) + e*power(T,4)
+Specific heat capacity for liquid phase, CpL = a + b*T +c*power(T,2) + d*power(T,3) + e*power(T,4)
 For PO in J/mol.K : a + b*T + c*power(T,2)
 $offtext
 
-Table cpcon (j, *) "isobaric heat capacity constants for liquid phase"
+Table cpconl (j, *) "isobaric heat capacity constants for liquid phase"
                     a         b          c              d         e   
   methanol     105800   -362.23     0.9379      
   water        276370   -2090.1     8.125        -0.014116  9.3701e-6
   PO           113.08   -0.15085    6.7e-4
   PG           58080      445.2                                            ;
+
+$ontext
+Specific heat capacity for vapor phase, Cp,v = a + b*( (c/t) / (sinh(d/t)) ) + e*( (f / t) / cosh(f / t) )**2
+
+For PO in J/mol.K : a + b*T + c*power(T,2)
+Actually do I even need this?
+$offtext
+
+Table cpconv (j, *) "isobaric heat capacity constants for vapor phase"
+                    a         b          c                 d            e   
+  methanol 0.39252e-5   0.879e-5    1.9165e-3     0.53654e-5        896.7
+  water    0.33363e-5  0.2679e-5    2.6105e-3     0.08896e-5         1169 
+  PO           
+  PG                                                       ;
 
 $ontext
 TRAY, REBOILER, CONDENSER TEMPERATURES
@@ -211,18 +222,32 @@ Set
   reb(i)         'reboiler'
   con(i)         'condenser'
   col(i)         'stages in the column excluding reboiler and condenser'
-  floc(i)        'possible locations for the feed stage'  / 2*8 /
   above_feed(i)  'stages above the feed stage, excluding feed stage i.e. possible locations for reflux'
-  below_feed(i)  'stages below feed stage, including feed stage i.e. possible locations for reboiler';
+  below_feed(i)  'stages below feed stage, including feed stage i.e. possible locations for reboiler'
+  iref(i)       'stage at which reflux enters'
+  ireb(i)       'stage at which reboiler re-entry stream enters';
+
+Alias(i,i2);
+Alias(above_feed, af);
+Alias(below_feed, bf);
+
+Parameter
+  floc          'feed stage location' / 5 /;
 
 *assigns first element in dynamic set to reboiler
-reb(i) = yes$(ord(i) = 1);
+  reb(i) = yes$(ord(i) = 1);
 
 *assigns last element in dynamic set to condenser
-con(i) = yes$(ord(i) = card(i));
+  con(i) = yes$(ord(i) = card(i));
 
 *assigns all other elements in dynamic set to the columns
-col(i) = yes - (reb(i) + con(i));
+  col(i) = yes - (reb(i) + con(i));
+
+* assigns stages below feed / above feed to dynamic set
+  below_feed(i) = yes$( ord(i) le floc ) - reb(i);
+  above_feed(i) = yes - below_feed(i) - con(i);
+
+* initial guess for reflux and reboiler stages? should be a set with 1 member each.
 
 $ontext
 DEFINE COLUMN PRESSURES
@@ -230,52 +255,68 @@ assigns the pressure on a particular tray depending on whether reboiler, condens
 tray in column
 $offtext
 
-Parameter p(i) 'pressure prevailing in tray i';
-p(i)$reb(i) = preb;
-p(i)$con(i) = pcon;
-p(i)$col(i) = pbot - ( ((pbot - ptop) / card(i) - 1 - 2) ) * (ord(i) - 2);
+Parameter
+  p(i) 'pressure prevailing in tray i';
+
+  p(i)$reb(i) = preb;
+  p(i)$con(i) = pcon;
+  p(i)$col(i) = pbot - ( ((pbot - ptop) / card(i) - 1 - 2) ) * (ord(i) - 2);
 
 Positive Variable
-  x(i,j) 'mole fraction of component j in liquid on ith tray'
-  y(i,j) 'mole fraction of component j in vapor on ith tray'
-  l(i)   'molar flow rate of liquid leaving tray i'
-  v(i)   'molar flow rate of vapor leaving tray i'
-  t(i)   'temperature of tray i'
-  feed(i)'feed stream entering tray i'
-  r      'reflux ratio'
-  p1     'top product rate'
-  p2     'bottom product rate'
-  ref(i) 'amount of reflux entering tray i'
-  bu(i)  'amount of reboiler stream entering tray i'
+  x(i,j)    'mole fraction of component j in liquid on ith tray'
+  y(i,j)    'mole fraction of component j in vapor on ith tray'
+  l(i)      'molar flow rate of liquid leaving tray i'
+  v(i)      'molar flow rate of vapor leaving tray i'
+  t(i)      'temperature of tray i'
+  feed(i)   'feed stream entering tray i'
+  r         'reflux ratio'
+  p1        'top product rate'
+  p2        'bottom product rate'
+  vref(i)   'amount of reflux entering tray i'
+  lbu(i)    'amount of reboiler stream entering tray i'  
 
 Variable
   hl(i)  'molar specific enthalpy of liquid on tray i'
   hv(i)  'molar specific enthalpy of vapor on tray i'
 
 Binary Variable
-  zref(i) 'associated with location of reflux. 1 if i is tray where reflux enters, 0 otherwise.'
-  zbu(i) 'associated with location of reboiler stream. 1 if i is tray where reboiler stream enters, 0 otherwise.'
+  zref(i) 'for location of reflux. 1 if i is tray where reflux enters, 0 otherwise.'
+  zbu(i) 'for location of reboiler stream. 1 if i is tray where reboiler stream enters, 0 otherwise.'
 
 Equation
-  phe(i)    'phase equilibrium relations'
-  errk(i)   'phase equilibrium error function'
-  tmbc(i)   'total material balance for entire column'
-  tmb(i)    'total material balance for trays'
-  tmbl(i)   'total material balance for reboiler'
-  tmbn(i)   'total material balance for condenser'
-  cmb(i,j)  'component material balance (1 < i < n)'
-  cmbl(i,j) 'component material balance on first tray'
-  cmbn(i,j) 'component material balance on nth tray'
-  defln(i)  'definition of l(n)'
-  defp2(i)  'definition of p2'
-  defhl(i)  'definition of hl(i)'
-  defhv(i)  'definition of hv(i)'
-  eb(i)     'enthalpy balance'
-  purcon    'purity constraints'
-  sumf      'sum of feeds';
+  phe1(i),phe2(i), phe3(i)        'phase equilibrium relations'
+  errk(i)       'phase equilibrium error function'
 
-* (2) Phase Equlibrium Relations fij,v = fij,l
-phe(i) ..    f1l(300, 1.013, x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f1v(300, 101.3, y(i,'methanol'),y(i,'water'),y(i,'PO')); 
+  tmbc(i)       'total material balance for entire column'
+  tmbf(i)       'total material balance for feed stage'
+  tmbref(i)     'total material balance for possible candidates for reflux'
+  tmbreb(i)     'total material balance for possible candidates for boil-up re-entry'
+  tmb(i)        'total material balance for trays'
+  tmbl(i)       'total material balance for reboiler'
+  tmbn(i)       'total material balance for condenser'
+  defln(i)      'definition of l(n) i.e. l out of condenser'
+  defp2(i)      'definition of p2 i.e. l out of reboiler'
+  defvn(i)      'definition of v(n) i.e. v out of condenser, which should be zero'
+  defref(i)     'definition of reflux re-entering column'
+
+  cmb(i,j)      'component material balance (1 < i < n)'
+  cmbf(i,j)     'component material balance for feed stage'
+  cmbref(i,j)   'component material balance for possible stages for reflux'
+  cmbreb(i,j)   'component material balance for possible stages for boilup reentry'
+  cmbl(i,j)     'component material balance on first tray'
+  cmbn(i,j)     'component material balance on nth tray'
+
+  defhl(i)      'definition of hl(i)'
+  defhv(i)      'definition of hv(i)'
+
+  eb(i)         'enthalpy balance'
+  purcon        'purity constraints'
+  sumf          'sum of feeds'                                                      ;
+
+* (2) PHASE EQUILIBRIUM RELATIONS fij,v = fij,l
+phe1(i) ..    f1l(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f1v(t(i), p(i), y(i,'methanol'),y(i,'water'),y(i,'PO')); 
+phe2(i) ..    f2l(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f2v(t(i), p(i), y(i,'methanol'),y(i,'water'),y(i,'PO')); 
+phe3(i) ..    f3l(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f3v(t(i), p(i), y(i,'methanol'),y(i,'water'),y(i,'PO')); 
 
 $ontext
 Attempted to use VLE equation here, but may not be necessary after including thermodynamic package?
@@ -288,55 +329,103 @@ phe(i,j) ..             y(i,j)*p(i)
                             ); 
 $offtext
 
-* (3) Phase Equilibrium Error
+* (3) PHASE EQUILIBRIUM ERROR
 errk(i) ..               sum(j, x(i,j)) - sum(j, y(i,j)) =e= 0;
 
-* (4) Total Material Balances
+* (4) TOTAL MATERIAL BALANCES
 * There are a total of 11 material balance equations 1) Entire column
 * 2) Reflux 3) After the feed 4) At the feed location 5) Below the feed
 * 6) Liquid flow rate from first tray 7) Vapor flow rate from first tray
 * 8) Reflux balance 9) Liquid flow rate out of reboiler
 
-* TMB 3a Entire Column
-tmbc(i)..               v(i-1) - (sum(i, ref(i)$zref(i)) + l(i) + p1) =e= 0;
+* TMB 4a For Entire Column
+tmbc(i)$col(i)..            v(i-1) - (sum(i2, vref(i)) + l(i) + p1) =e= 0;
 
-* TMB 3c,3d,3e are combined into a single equation
-tmb(i) ..                l(i) + v(i) - l(i+1) -v(i-1) + feed(i)$floc(i) =e= 0;
+* TMB 4b & 4c for stages above the feed excluding condenser, may / may not include reflux stage
+tmbref(i)$above_feed(i)..   l(i) + v(i) - l(i+1)- v(i-1) - vref(i)$iref(i) =e= 0;
 
-* TMB 3f for reboiler. no liquid outlet stream.
-tmbl(i)$reb(i) ..        l(i) + v(i) - l(i+1) =e= 0;
+* TMB 4d for feed stage balance
+tmbf(i) ..                   l(i) + v(i) - l(i+1) -v(i-1) - feed(i)$floc =e= 0;
 
-* TMB 3g for condenser. no vapor outlet stream.
-tmbn(i)$con(i) ..        l(i) + p1 - v(i-1) =e= 0;
+* TMB 4e,f for stages below feed excluding reboiler, may / may not include boilup re-entrance
+tmbreb(i) ..                l(i) + v(i) - l(i+1)- v(i-1) - lbu(i)$ireb(i) =e= 0;
 
-* Constraint on liquid flow rate out of condenser to reflux ratio of total product stream
-defln(i)$con(i) ..       l(i) - (r * p1) =e= 0;
+* TMB 4g for constraint on reboiler.
+tmbl(i)$reb(i) ..           l(i) + v(i) + sum(bf, lbu(i))- l(i+1) =e= 0;
 
-* Constraint on liquid flow rate out of reboiler
-defp2(i)$reb(i) ..       l(i) - p2 =e= 0;
+* TMB 4h for constraint on second product stream = liquid flow rate from reboiler
+defp2(i)$reb(i) ..          l(i) - p2 =e= 0;
 
-* Constraint on vapor flow rate out of condenser. May need to include.
+* TMB 4i for constraint on condenser. no vapor outflow = total condenser
+defvn(i)$con(i) ..          v(i) =e= 0;
 
-* Constraint on vapor flow rate out of reboiler. May need to include.
+$ontext
+* TMB condenser. no vapor outlet stream. may serve same purpose as 3i, check!
+tmbn(i)$con(i) ..           l(i) + p1 - v(i-1) =e= 0;
+$offtext
 
-* Component Material Balances
-* similar to TMB, but specifically for certain components
+* TMB 4j for constraint on reflux streams back into column. m.b. on reflux = RR * top product
+defref(i)$above_feed(i) ..  sum(i2, vref(i)) - (r * p2) =e= 0 ;
 
-* Component Material Balance for Column
-cmb(i,j)$col(i) ..       l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1, j)
-                         - v(i-1)*y(i-1,j) - (feed(i)*xf(j))$floc(i) =e= 0;
+* TMB 4k Constraint on liquid flow rate out of condenser to reflux ratio of total product stream
+defln(i)$con(i) ..          l(i) - (r * p1) =e= 0;
 
-* Component Material Balance for Reboiler
-cmbl(i,j)$reb(i) ..      l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1,j) =e= 0;
+
+* (5) COMPONENT MATERIAL BALANCES
+* CMB 5a Entire Column
+$ontext
+Stock Equation
+cmb(i,j)$col(i) ..       l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1, j) - v(i-1)*y(i-1,j) - (feed(i)*xf(j))$floc =e= 0;
+$offtext
+
+cmb(i,j)$col(i) ..          v(i-1)*y(i-1,j) - (sum(i2,vref(i)) + l(i) + p1) * x(i,j) =e= 0;
+
+* CMB 5b & 5c for stages above the feed excluding condenser, may / may not include reflux stage
+* how to settle liq comp for re-entry
+cmbref(i,j)$above_feed(i)..   l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i,j) - v(i-1)*y(i,j) - (vref(i)*x(i,j))$iref(i) =e= 0;
+
+* CMB 5d for feed stage
+cmbf(i,j) ..                   l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i,j) - v(i-1)*y(i,j) - (feed(i)*xf(j))$floc =e= 0;
+
+* CMB 5e,f for stages below feed excluding reboiler, may / may not include boilup re-entrance
+cmbreb(i,j) ..                l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i,j) - v(i-1)*y(i,j) - (lbu(i)*x(i,j))$ireb(i) =e= 0;
+
+* CMB 5g for constraint on reboiler.
+cmbl(i,j)$reb(i) ..           l(i)*x(i,j) + v(i)*y(i,j) + (sum(bf, lbu(i)))*y(i,j) - l(i+1)*x(i+1,j) =e= 0;
+
+$ontext
+Unnecessary for now
+* Component Material for Reboiler
+cmbl(i,j)$reb(i) ..         l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1,j) =e= 0;
 
 * Component Material Balance for Condenser
 cmbn(i,j)$con(i) ..      l(i)*x(i,j) + p1*x(i,j) - v(i-1)*y(i-1,j) =e= 0;
+$offtext
 
-* Enthalpy Balances
-eb(i)$col(i) ..          l(i)*hl(i) + v(i)*hv(i)
-                         - l(i+1)*hl(i+1) - v(i-1)*hv(i-1)
-                         - (feed(i)*shf)$floc(i) =e= 0;
+* (6) ENTHALPY BALANCES
+* Define equations to calculate enthalpy balances for vapor and liquid on each tray
+* Specific heat capacity, CpL = a + b*T +c*power(T,2) + d*power(T,3) + e*power(T,4)
+* For PO in J/mol.K : a + b*T + c*power(T,2)
 
+$ontext
+defhl(i) ..             hl(i) -( h_liq(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) ) =e= 0;
+defhv(i) ..             hv(i) -( h_vap(t(i), p(i), y(i,'methanol'), y(i,'water'), y(i,'PO')) ) =e= 0;
+$offtext
+
+$ontext
+may not need this, can use thermodynamic librari
+defhl(i) ..             hl(i) - (cpconl(j,'a') + cpconl(j,'b')*t(i) + cpconl(j,'c')*(t(i)**2) + cpconl(j,'d')*(t(i)**3) + cpconl(j,'e')*(t(i)**4));                   
+defhv(i) ..                
+$offtext
+
+* EB 6a,6b for possible candidates for reflux, may / may not include reflux stage
+
+eb(i)$col(i) ..          l(i)*hl(i) + v(i)*hv(i) - l(i+1)*hl(i+1) - v(i-1)*hv(i-1) - (feed(i)*shf)$floc =e= 0;
+
+* EB 6c for feed stage
+
+* EB 6d, 6e for possible candidates for boilup reentry
+ 
 * Reflux entering only on one tray
 
 * Reboiled vapor entering only on one tray
@@ -345,17 +434,6 @@ eb(i)$col(i) ..          l(i)*hl(i) + v(i)*hv(i)
 
 * Purity Constraint on PO
 purcon .. x('9', 'PO') =g= 0.85;
-
-* Initial guess for feed stage
-Set ifeed(i) / 4 /;
-
-* Boolean check if stage is above or below feed stream
-
-below_feed(i) = yes$(ord(i) le 6 );
-above_feed(i) = yes - below_feed(i);
-
-* assigns first iteration to lower limit
-feed.l(i)$ifeed(i) = f;
 
 * assigns lower, upper bounds and initial conditions to
 * reflux ratio, top product rate and bottom product rate
@@ -383,17 +461,6 @@ Binary Variable yf(i);
 $offText
 
 Variable zf;
-
-$onText
-Equation
-  sumby         'sum of binary variables in vapor phase in feed'
-  sumbl         'sum of binart variables in liquid phase in feed'
-  confeed(i)    'constraint on feed'
-  obj2          'second objective function'  ;
-
-* Binary variables in feed for both liquid and vapor phases should add up to 1
-sum(i$floc(i), yf(i))
-$offText
 
 Model column 'ideal number of stages' / all /;
 Solve column using minlp maximizing zf;

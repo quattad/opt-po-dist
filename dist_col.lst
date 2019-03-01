@@ -1,4 +1,4 @@
-GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 02/28/19 17:21:43 Page 1
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/01/19 13:44:59 Page 1
 Determining Theoretical Trays Required for Propylene Oxide (PO) Separation
 System --- Multicomponent with PO as light key and Methanol as heavy key at 2bar - 2.6bar.
 
@@ -32,23 +32,10 @@ System --- Multicomponent with PO as light key and Methanol as heavy key at 2bar
        
       Positive Variable  // used for variables for which negative values are meaningless
        
-      Sets
-               Trays, I = {1, 2... N}; N is estimated from Gilliand correlation.
-               Possible locations for feed, i_feed = {i_feed + 1, i_feed + 2... N-1}
-               Possible locations for reflux, REF = {i_r_min, i_r_min + 1... N -1}
-               Possible locations for boil-up, BU = {2, 3..., i_b_max - 1, i_b_max}
-               Feed Location = {i_feed}
-               Stages above feed, AF = {i|i_feed < i <= (N-1)}; REF subset of AF
-               Stages below feed, BF = {i|2<= i < i_feed}; BU subset of BF
-               Corresponding index set, J = {1, 2, ... , c}
-       
       Subsets
                Reboiler, R = {1}
                Condenser, C = {N}
                Column Trays, COL = {2, 3, ..., N-1}
-       
-      Parameter
-      Scalar
       Equation
                There are a total of 9 equations that need to be met that mainly
                correspond to the MESH equations.
@@ -62,13 +49,13 @@ System --- Multicomponent with PO as light key and Methanol as heavy key at 2bar
                7) Reboiler single tray constraint
                8) Pressure Profile
                9) Fugacity and enthalpy balances of each component on each tray
-  64   
-      DEFINE THERMODYNAMIC PROPERTIES
-  68   
-  69  * Include developed libraries in GAMS
+  51   
+  52  * ----------------------------- STEP 1 : IMPORT THERMODYNAMIC PACKAGE -----------------------------
+  53  * Include developed libraries in GAMS
+  54   
+  60   
+  69   
   75   
-  84   
-  90   
 FUNCLIBIN  NRTLideal NRTLideal.dll
 Function Library NRTLideal
 NRTL + IG Property Package v0.9 by Ph.D. J.I. Manassaldi (jmanassaldi@frro.utn.edu.ar); Ph.D. N.J. Scenna; Ph.D. M.C. Mussati; Ph.D. S.F. Mussati (mussati@santafe-conicet.gov.ar)
@@ -90,165 +77,234 @@ NLP  f2_vap(temperature [k],pressure [bar],methanol,water,1,2-propylene oxide)va
 NLP  f3_liq(temperature [k],pressure [bar],methanol,water,1,2-propylene oxide)liquid phase fugacity of component 3 [bar]
 NLP  f3_vap(temperature [k],pressure [bar],methanol,water,1,2-propylene oxide)vapor phase fugacity of component 3 [bar]
 
-  92   
-  93  function f1l     /NRTLideal.f1_liq /;
-  94  function f2l     /NRTLideal.f2_liq /;
-  95  function f3l     /NRTLideal.f3_liq /;
-  96   
-  97  function f1v     /NRTLideal.f1_vap /;
-  98  function f2v     /NRTLideal.f2_vap /;
-  99  function f3v     /NRTLideal.f3_vap /;
- 100   
- 101  Set j 'components' / methanol, water, PO, PG /;
+  77   
+  78  function f1l     /NRTLideal.f1_liq /;
+  79  function f2l     /NRTLideal.f2_liq /;
+  80  function f3l     /NRTLideal.f3_liq /;
+  81   
+  82  function f1v     /NRTLideal.f1_vap /;
+  83  function f2v     /NRTLideal.f2_vap /;
+  84  function f3v     /NRTLideal.f3_vap /;
+  85   
+  86  Set j 'components' / methanol, water, PO, PG /;
+  87   
+  88   
+  89  * ----------------------------- STEP 2 : DEFINE PHYSICAL PROPERTIES -----------------------------
+  90   
+      PHYSICAL PROPERTIES CONSTANTS
+      PG critical temp and pressure not pertinent
+  95   
+  96  Table prcon (j, *) 'physical properties'
+  97                   mm      tb      tc      pc
+  98    methanol    32.042  337.85  513.15  79.54
+  99    water       18.015  373.15  647.35 220.89
+ 100    PO           58.08  307.38  482.25  49.24
+ 101    PG           76.09  460.15                            ;
  102   
- 103  * PG critical temp and pressure not pertinent
- 104   
- 105  Table prcon (j, *) 'physical properties'
- 106                   mm      tb      tc      pc
- 107    methanol    32.042  337.85  513.15  79.54
- 108    water       18.015  373.15  647.35 220.89
- 109    PO           58.08  307.38  482.25  49.24
- 110    PG           76.09  460.15                            ;
- 111   
- 112  * all constants obtained from Perry's Chemical Engineering handbook except for PO and PG.
- 113  * Pressures in Pa Formula for Perry: lnP = a + b/T + c*lnT + d*power(T,e)
- 114  * PO obtained from 1966 paper in the format logP* = 7.658 - 1472/T. Applicable within range of 40-70oC.
- 115   
- 116  Table vpcon(j, *) "constants for vapor pressure"
- 117                     a        b         c            d        e       tmin    tmax
- 118    methanol    82.718  -6904.5   -8.8622    7.4664e-6        2     175.47   512.5
- 119    water       73.649  -7258.2   -7.3037    4.1653e-6        2     273.16   647.096
- 120    PO           7.658  -1472
- 121    PG           212.8  -15420    -28.109    2.1564e-5        2                       ;
- 122   
- 123  * all constants obtained from Perry's Chemical Engineering handbook except for PO.
- 124  * Specific heat capacity, CpL = a + b*T +c*power(T,2) + d*power(T,3) + e*power(T,4)
- 125  * For PO in J/mol.K : a + b*T + c*power(T,2)
- 126   
- 127  Table cpcon (j, *) "isobaric heat capacity constants for liquid phase"
- 128                      a         b          c              d         e
- 129    methanol     105800   -362.23     0.9379
- 130    water        276370   -2090.1     8.125        -0.014116  9.3701e-6
- 131    PO           113.08   -0.15085    6.7e-4
- 132    PG           58080      445.2                                            ;
- 133   
- 134  * Define temperatures for the 1 and N-1 trays, reboiler, condenser
- 135  Scalar
- 136           treb 'guess temperature for reboiler'
- 137           tbot 'guess temperature for bottom tray'
- 138           ttop 'guess temperature for top tray'
- 139           tcon 'guess temperature for condenser';
- 140   
- 141  treb = 359.6;
- 142  tbot = 357.5;
- 143  ttop = 330.9;
- 144  tcon = 326.1;
- 145   
- 146  * filled in from HYSYS simulation
- 147  Scalar
- 148           f       'total number of moles of feed'
- 149           tf      'temperature of feed in K'
- 150           pf      'pressure of feed stream in bar'
- 151           vf      'vapor fraction in feed'
- 152           shf     'specific enthalpy in feed'
- 153           preb    'reboiler pressure'
- 154           pbot    '1st tray pressure'
- 155           ptop    'N-1 tray pressure'
- 156           pcon    'condenser pressure';
- 157   
- 158  f = 6282;
- 159  preb = 2.07;
- 160  pbot = 1.97;
- 161  ptop = 1.90;
- 162  pcon = 1.80;
- 163  pf = 18.48;
- 164  vf = 0;
- 165   
- 166  Parameter xf(j) 'mole fractions in feed stream'
- 167  /
- 168           methanol 0.7515,
- 169           water 0.1292,
- 170           PO 0.1073,
- 171           PG 0.0102      / ;
- 172   
-      MODELING DISTILLATION COLUMN
+      VAPOR PRESSURE CONSTANTS
+      all constants obtained from Perry's Chemical Engineering handbook except for PO and PG.
+      Pressures in Pa Formula for Perry: lnP = a + b/T + c*lnT + d*power(T,e)
+      PO obtained from 1966 paper in the format logP* = 7.658 - 1472/T. Applicable within range of 40-70oC.
+ 109   
+ 110  Table vpcon(j, *) "constants for vapor pressure"
+ 111                     a        b         c            d        e       tmin    tmax
+ 112    methanol    82.718  -6904.5   -8.8622    7.4664e-6        2     175.47   512.5
+ 113    water       73.649  -7258.2   -7.3037    4.1653e-6        2     273.16   647.096
+ 114    PO           7.658  -1472
+ 115    PG           212.8  -15420    -28.109    2.1564e-5        2                       ;
+ 116   
+      ISOBARIC HEAT CAPACITY CONSTANTS
+      all constants obtained from Perry's Chemical Engineering handbook except for PO.
+      Specific heat capacity for liquid phase, CpL = a + b*T +c*power(T,2) + d*power(T,3) + e*power(T,4)
+      For PO in J/mol.K : a + b*T + c*power(T,2)
+ 123   
+ 124  Table cpconl (j, *) "isobaric heat capacity constants for liquid phase"
+ 125                      a         b          c              d         e
+ 126    methanol     105800   -362.23     0.9379
+ 127    water        276370   -2090.1     8.125        -0.014116  9.3701e-6
+ 128    PO           113.08   -0.15085    6.7e-4
+ 129    PG           58080      445.2                                            ;
+ 130   
+      Specific heat capacity for vapor phase, Cp,v = a + b*( (c/t) / (sinh(d/t)) ) + e*( (f / t) / cosh(f / t) )**2
+       
+      For PO in J/mol.K : a + b*T + c*power(T,2)
+      Actually do I even need this?
+ 137   
+ 138  Table cpconv (j, *) "isobaric heat capacity constants for vapor phase"
+ 139                      a         b          c                 d            e
+ 140    methanol 0.39252e-5   0.879e-5    1.9165e-3     0.53654e-5        896.7
+ 141    water    0.33363e-5  0.2679e-5    2.6105e-3     0.08896e-5         1169
+ 142    PO
+ 143    PG                                                       ;
+ 144   
+      TRAY, REBOILER, CONDENSER TEMPERATURES
+      Define temperatures for the 1 and N-1 trays, reboiler, condenser
+      Values obtained from HYSYS simulation
+ 150   
+ 151  Scalar
+ 152           treb 'guess temperature for reboiler'
+ 153           tbot 'guess temperature for bottom tray'
+ 154           ttop 'guess temperature for top tray'
+ 155           tcon 'guess temperature for condenser';
+ 156   
+ 157  treb = 359.6;
+ 158  tbot = 357.5;
+ 159  ttop = 330.9;
+ 160  tcon = 326.1;
+ 161   
+      FEED PROPERTIES
+      Values obtained from HYSYS simulation
+ 166   
+ 167  Scalar
+ 168           f       'total number of moles of feed'
+ 169           tf      'temperature of feed in K'
+ 170           pf      'pressure of feed stream in bar'
+ 171           vf      'vapor fraction in feed'
+ 172           shf     'specific enthalpy in feed'
+ 173           preb    'reboiler pressure'
+ 174           pbot    '1st tray pressure'
+ 175           ptop    'N-1 tray pressure'
+ 176           pcon    'condenser pressure';
+ 177   
+ 178  f = 6282;
+ 179  preb = 2.07;
+ 180  pbot = 1.97;
+ 181  ptop = 1.90;
+ 182  pcon = 1.80;
+ 183  pf = 18.48;
+ 184  vf = 0;
+ 185   
+ 186  Parameter xf(j) 'mole fractions in feed stream'
+ 187  /
+ 188           methanol 0.7515,
+ 189           water 0.1292,
+ 190           PO 0.1073,
+ 191           PG 0.0102      / ;
+ 192   
+ 193  * ----------------------------- STEP 3 : MODELLING DISTLLATION COLUMN -----------------------------
       Reboiler (1) ~ Condenser (N)
       Estimated number of trays is 9 from Gilliand correlation
- 178   
- 179  Set
- 180    i              'stages' / 1*9 /
- 181    reb(i)         'reboiler'
- 182    con(i)         'condenser'
- 183    col(i)         'stages in the column'
- 184    floc(i)        'possible locations in the feed stage'  / 2*8 /
- 185    above_feed(i)  'stages above the feed stage, excluding feed stage'
- 186    below_feed(i)  'stages below feed stage, including feed stage';
- 187   
- 188  * operator 'ord' returns relative position of member in a set
- 189  * card operator 'card' returns number of elements present in a set
- 190  * yes$ used to define dynamic sets
- 191  * dynamic sets have elements that are added/removed during runtime
- 192  * ord used below to allocate
- 193   
- 194  *assigns first element in dynamic set to reboiler
- 195  reb(i) = yes$(ord(i) = 1);
- 196   
- 197  *assigns last element in dynamic set to condenser
- 198  con(i) = yes$(ord(i) = card(i));
- 199   
- 200  *assigns all other elements in dynamic set to the columns
- 201  col(i) = yes - (reb(i) + con(i));
- 202   
- 203  * assigns the pressure on a particular tray depending on whether reboiler, condenser or
- 204  * tray in column
- 205   
- 206  Parameter p(i) 'pressure prevailing in tray i';
- 207  p(i)$reb(i) = preb;
- 208  p(i)$con(i) = pcon;
- 209  p(i)$col(i) = pbot - ( ((pbot - ptop) / card(i) - 1 - 2) ) * (ord(i) - 2);
- 210   
- 211  Positive Variable
- 212    x(i,j) 'mole fraction of component j in liquid on ith tray'
- 213    y(i,j) 'mole fraction of component j in vapor on ith tray'
- 214    l(i)   'molar flow rate of liquid leaving tray i'
- 215    v(i)   'molar flow rate of vapor leaving tray i'
- 216    t(i)   'temperature of tray i'
- 217    feed(i)'feed stream entering tray i'
- 218    r      'reflux ratio'
- 219    p1     'top product rate'
- 220    p2     'bottom product rate'
- 221    ref(i) 'amount of reflux entering tray i'
- 222    bu(i)  'amount of reboiler stream entering tray i'
- 223   
- 224  Variable
- 225    hl(i)  'molar specific enthalpy of liquid on tray i'
- 226    hv(i)  'molar specific enthalpy of vapor on tray i'
- 227   
- 228  Binary Variable
- 229    zref(i) 'associated with location of reflux. 1 if i is tray where reflux enters, 0 otherwise.'
- 230    zbu(i) 'associated with location of reboiler stream. 1 if i is tray where reboiler stream enters, 0 otherwise.'
- 231   
- 232  Equation
- 233    phe(i)    'phase equilibrium relations'
- 234    errk(i)   'phase equilibrium error function'
- 235    tmbc(i)   'total material balance for entire column'
- 236    tmb(i)    'total material balance for trays'
- 237    tmbl(i)   'total material balance for reboiler'
- 238    tmbn(i)   'total material balance for condenser'
- 239    cmb(i,j)  'component material balance (1 < i < n)'
- 240    cmbl(i,j) 'component material balance on first tray'
- 241    cmbn(i,j) 'component material balance on nth tray'
- 242    defln(i)  'definition of l(n)'
- 243    defp2(i)  'definition of p2'
- 244    defhl(i)  'definition of hl(i)'
- 245    defhv(i)  'definition of hv(i)'
- 246    eb(i)     'enthalpy balance'
- 247    purcon    'purity constraints'
- 248    sumf      'sum of feeds';
+       
+      Sets are as follows.
+       
+               Stages, I = {1, 2... N}; N is estimated from Gilliand correlation.
+               Possible locations for feed, i_feed = {i_feed + 1, i_feed + 2... N-1}
+               Possible locations for reflux, REF = {i_r_min, i_r_min + 1... N -1}
+               Possible locations for boil-up, BU = {2, 3..., i_b_max - 1, i_b_max}
+               Feed Location = {i_feed}
+               Stages above feed, AF = {i|i_feed < i <= (N-1)}; REF subset of AF
+               Stages below feed, BF = {i|2<= i < i_feed}; BU subset of BF
+               Corresponding index set, J = {1, 2, ... , c}
+       
+      OPERATOR ord(i)
+      operator 'ord' returns relative position of member in a set
+       
+      OPERATOR card(i)
+      card operator 'card' returns number of elements present in a set
+       
+      OPERATOR $yes$
+      yes$ used to define dynamic sets. dynamic sets have elements that are added/removed during runtime
+       
+ 219   
+ 220  Set
+ 221    i              'stages' / 1*9 /
+ 222    reb(i)         'reboiler'
+ 223    con(i)         'condenser'
+ 224    col(i)         'stages in the column excluding reboiler and condenser'
+ 225    above_feed(i)  'stages above the feed stage, excluding feed stage i.e. possible locations for reflux'
+ 226    below_feed(i)  'stages below feed stage, including feed stage i.e. possible locations for reboiler'
+ 227    iref(i)       'stage at which reflux enters'
+ 228    ireb(i)       'stage at which reboiler re-entry stream enters';
+ 229   
+ 230  Alias(i,i2);
+ 231  Alias(above_feed, af);
+ 232  Alias(below_feed, bf);
+ 233   
+ 234  Parameter
+ 235    floc          'feed stage location' / 5 /;
+ 236   
+ 237  *assigns first element in dynamic set to reboiler
+ 238    reb(i) = yes$(ord(i) = 1);
+ 239   
+ 240  *assigns last element in dynamic set to condenser
+ 241    con(i) = yes$(ord(i) = card(i));
+ 242   
+ 243  *assigns all other elements in dynamic set to the columns
+ 244    col(i) = yes - (reb(i) + con(i));
+ 245   
+ 246  * assigns stages below feed / above feed to dynamic set
+ 247    below_feed(i) = yes$( ord(i) le floc ) - reb(i);
+ 248    above_feed(i) = yes - below_feed(i) - con(i);
  249   
- 250  * (2) Phase Equlibrium Relations fij,v = fij,l
- 251  phe(i) ..    f1l(300, 1.013, x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f1v(300, 101.3, y(i,'methanol'),y(i,'water'),y(i,'PO'));
- 252   
+ 250  * initial guess for reflux and reboiler stages? should be a set with 1 member each.
+ 251   
+      DEFINE COLUMN PRESSURES
+      assigns the pressure on a particular tray depending on whether reboiler, condenser or
+      tray in column
+ 257   
+ 258  Parameter
+ 259    p(i) 'pressure prevailing in tray i';
+ 260   
+ 261    p(i)$reb(i) = preb;
+ 262    p(i)$con(i) = pcon;
+ 263    p(i)$col(i) = pbot - ( ((pbot - ptop) / card(i) - 1 - 2) ) * (ord(i) - 2);
+ 264   
+ 265  Positive Variable
+ 266    x(i,j)    'mole fraction of component j in liquid on ith tray'
+ 267    y(i,j)    'mole fraction of component j in vapor on ith tray'
+ 268    l(i)      'molar flow rate of liquid leaving tray i'
+ 269    v(i)      'molar flow rate of vapor leaving tray i'
+ 270    t(i)      'temperature of tray i'
+ 271    feed(i)   'feed stream entering tray i'
+ 272    r         'reflux ratio'
+ 273    p1        'top product rate'
+ 274    p2        'bottom product rate'
+ 275    vref(i)   'amount of reflux entering tray i'
+ 276    lbu(i)    'amount of reboiler stream entering tray i'
+ 277   
+ 278  Variable
+ 279    hl(i)  'molar specific enthalpy of liquid on tray i'
+ 280    hv(i)  'molar specific enthalpy of vapor on tray i'
+ 281   
+ 282  Binary Variable
+ 283    zref(i) 'for location of reflux. 1 if i is tray where reflux enters, 0 otherwise.'
+ 284    zbu(i) 'for location of reboiler stream. 1 if i is tray where reboiler stream enters, 0 otherwise.'
+ 285   
+ 286  Equation
+ 287    phe1(i),phe2(i), phe3(i)        'phase equilibrium relations'
+ 288    errk(i)       'phase equilibrium error function'
+ 289   
+ 290    tmbc(i)       'total material balance for entire column'
+ 291    tmbf(i)       'total material balance for feed stage'
+ 292    tmbref(i)     'total material balance for possible candidates for reflux'
+ 293    tmbreb(i)     'total material balance for possible candidates for boil-up re-entry'
+ 294    tmb(i)        'total material balance for trays'
+ 295    tmbl(i)       'total material balance for reboiler'
+ 296    tmbn(i)       'total material balance for condenser'
+ 297    defln(i)      'definition of l(n) i.e. l out of condenser'
+ 298    defp2(i)      'definition of p2 i.e. l out of reboiler'
+ 299    defvn(i)      'definition of v(n) i.e. v out of condenser, which should be zero'
+ 300    defref(i)     'definition of reflux re-entering column'
+ 301   
+ 302    cmb(i,j)      'component material balance (1 < i < n)'
+ 303    cmbf(i,j)     'component material balance for feed stage'
+ 304    cmbref(i,j)   'component material balance for possible stages for reflux'
+ 305    cmbreb(i,j)   'component material balance for possible stages for boilup reentry'
+ 306    cmbl(i,j)     'component material balance on first tray'
+ 307    cmbn(i,j)     'component material balance on nth tray'
+ 308   
+ 309    defhl(i)      'definition of hl(i)'
+ 310    defhv(i)      'definition of hv(i)'
+ 311   
+ 312    eb(i)         'enthalpy balance'
+ 313    purcon        'purity constraints'
+ 314    sumf          'sum of feeds'                                                      ;
+ 315   
+ 316  * (2) PHASE EQUILIBRIUM RELATIONS fij,v = fij,l
+ 317  phe1(i) ..    f1l(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f1v(t(i), p(i), y(i,'methanol'),y(i,'water'),y(i,'PO'));
+ 318  phe2(i) ..    f2l(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f2v(t(i), p(i), y(i,'methanol'),y(i,'water'),y(i,'PO'));
+ 319  phe3(i) ..    f3l(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) =e= f3v(t(i), p(i), y(i,'methanol'),y(i,'water'),y(i,'PO'));
+ 320   
       Attempted to use VLE equation here, but may not be necessary after including thermodynamic package?
       phe(i,j) ..             y(i,j)*p(i)
                               - x(i,j)*exp(
@@ -257,127 +313,161 @@ NLP  f3_vap(temperature [k],pressure [bar],methanol,water,1,2-propylene oxide)va
                                   + (vpcon(j,'c')*ln(t(i)))
                                   + (vpcon(j,'d')*t(i)*exp(vpcon(j,'e')))
                                   ); 
- 263   
- 264  * (3) Phase Equilibrium Error
- 265  errk(i) ..               sum(j, x(i,j)) - sum(j, y(i,j)) =e= 0;
- 266   
- 267  * (4) Total Material Balances
- 268  * There are a total of 11 material balance equations 1) Entire column
- 269  * 2) Reflux 3) After the feed 4) At the feed location 5) Below the feed
- 270  * 6) Liquid flow rate from first tray 7) Vapor flow rate from first tray
- 271  * 8) Reflux balance 9) Liquid flow rate out of reboiler
- 272   
- 273  * TMB 3a Entire Column
- 274  tmbc(i)..               v(i-1) - (sum(i, ref(i)$zref(i)) + l(i) + p1) =e= 0;
-****                                         $125
-**** 125  Set is under control already
- 275   
- 276  * TMB 3c,3d,3e are combined into a single equation
- 277  tmb(i) ..                l(i) + v(i) - l(i+1) -v(i-1) + feed(i)$floc(i) =e= 0;
- 278   
- 279  * TMB 3f for reboiler. no liquid outlet stream.
- 280  tmbl(i)$reb(i) ..        l(i) + v(i) - l(i+1) =e= 0;
- 281   
- 282  * TMB 3g for condenser. no vapor outlet stream.
- 283  tmbn(i)$con(i) ..        l(i) + p1 - v(i-1) =e= 0;
- 284   
- 285  * Constraint on liquid flow rate out of condenser to reflux ratio of total product stream
- 286  defln(i)$con(i) ..       l(i) - (r * p1) =e= 0;
- 287   
- 288  * Constraint on liquid flow rate out of reboiler
- 289  defp2(i)$reb(i) ..       l(i) - p2 =e= 0;
- 290   
- 291  * Constraint on vapor flow rate out of condenser. May need to include.
- 292   
- 293  * Constraint on vapor flow rate out of reboiler. May need to include.
- 294   
- 295  * Component Material Balances
- 296  * similar to TMB, but specifically for certain components
- 297   
- 298  * Component Material Balance for Column
- 299  cmb(i,j)$col(i) ..       l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1, j)
- 300                           - v(i-1)*y(i-1,j) - (feed(i)*xf(j))$floc(i) =e= 0;
- 301   
- 302  * Component Material Balance for Reboiler
- 303  cmbl(i,j)$reb(i) ..      l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1,j) =e= 0;
- 304   
- 305  * Component Material Balance for Condenser
- 306  cmbn(i,j)$con(i) ..      l(i)*x(i,j) + p1*x(i,j) - v(i-1)*y(i-1,j) =e= 0;
- 307   
- 308  * Enthalpy Balances
- 309  eb(i)$col(i) ..          l(i)*hl(i) + v(i)*hv(i)
- 310                           - l(i+1)*hl(i+1) - v(i-1)*hv(i-1)
- 311                           - (feed(i)*shf)$floc(i) =e= 0;
- 312   
- 313  * Reflux entering only on one tray
- 314   
- 315  * Reboiled vapor entering only on one tray
- 316   
- 317  * Pressure profiles
- 318   
- 319  * Purity Constraint on PO
- 320  purcon .. x('9', 'PO') =g= 0.85;
- 321   
- 322  * Initial guess for feed stage
- 323  Set ifeed(i) / 4 /;
- 324   
- 325  * Boolean check if stage is above or below feed stream
- 326   
- 327  below_feed(i) = yes$(ord(i) le 6 );
- 328  above_feed(i) = yes - below_feed(i);
- 329   
- 330  * assigns first iteration to lower limit
- 331  feed.l(i)$ifeed(i) = f;
- 332   
- 333  * assigns lower, upper bounds and initial conditions to
- 334  * reflux ratio, top product rate and bottom product rate
- 335   
- 336  r.l      = 6;
- 337  r.up     = 8;
- 338  r.lo     = 5;
- 339   
- 340  p1.l     = 2000;
- 341  p1.up    = 3000;
- 342  p1.lo    = 4000;
+ 331   
+ 332  * (3) PHASE EQUILIBRIUM ERROR
+ 333  errk(i) ..               sum(j, x(i,j)) - sum(j, y(i,j)) =e= 0;
+ 334   
+ 335  * (4) TOTAL MATERIAL BALANCES
+ 336  * There are a total of 11 material balance equations 1) Entire column
+ 337  * 2) Reflux 3) After the feed 4) At the feed location 5) Below the feed
+ 338  * 6) Liquid flow rate from first tray 7) Vapor flow rate from first tray
+ 339  * 8) Reflux balance 9) Liquid flow rate out of reboiler
+ 340   
+ 341  * TMB 4a For Entire Column
+ 342  tmbc(i)$col(i)..            v(i-1) - (sum(i2, vref(i)) + l(i) + p1) =e= 0;
  343   
- 344  p2.l     = 4000;
- 345  p2.up    = 6000;
- 346  p2.lo    = 7000;
- 347   
- 348  * set upper limits for mole fractions
+ 344  * TMB 4b & 4c for stages above the feed excluding condenser, may / may not include reflux stage
+ 345  tmbref(i)$above_feed(i)..   l(i) + v(i) - l(i+1)- v(i-1) - vref(i)$iref(i) =e= 0;
+ 346   
+ 347  * TMB 4d for feed stage balance
+ 348  tmbf(i) ..                   l(i) + v(i) - l(i+1) -v(i-1) - feed(i)$floc =e= 0;
  349   
- 350  x.up(i,j) = 1.0;
- 351  y.up(i,j) = 1.0;
+ 350  * TMB 4e,f for stages below feed excluding reboiler, may / may not include boilup re-entrance
+ 351  tmbreb(i) ..                l(i) + v(i) - l(i+1)- v(i-1) - lbu(i)$ireb(i) =e= 0;
  352   
+ 353  * TMB 4g for constraint on reboiler.
+ 354  tmbl(i)$reb(i) ..           l(i) + v(i) + sum(bf, lbu(i))- l(i+1) =e= 0;
+ 355   
+ 356  * TMB 4h for constraint on second product stream = liquid flow rate from reboiler
+ 357  defp2(i)$reb(i) ..          l(i) - p2 =e= 0;
+ 358   
+ 359  * TMB 4i for constraint on condenser. no vapor outflow = total condenser
+ 360  defvn(i)$con(i) ..          v(i) =e= 0;
+ 361   
+      * TMB condenser. no vapor outlet stream. may serve same purpose as 3i, check!
+      tmbn(i)$con(i) ..           l(i) + p1 - v(i-1) =e= 0;
+ 366   
+ 367  * TMB 4j for constraint on reflux streams back into column. m.b. on reflux = RR * top product
+ 368  defref(i)$above_feed(i) ..  sum(i2, vref(i)) - (r * p2) =e= 0 ;
+ 369   
+ 370  * TMB 4k Constraint on liquid flow rate out of condenser to reflux ratio of total product stream
+ 371  defln(i)$con(i) ..          l(i) - (r * p1) =e= 0;
+ 372   
+ 373   
+ 374  * (5) COMPONENT MATERIAL BALANCES
+ 375  * CMB 5a Entire Column
+      Stock Equation
+      cmb(i,j)$col(i) ..       l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1, j) - v(i-1)*y(i-1,j) - (feed(i)*xf(j))$floc =e= 0;
+ 380   
+ 381  cmb(i,j)$col(i) ..          v(i-1)*y(i-1,j) - (sum(i2,vref(i)) + l(i) + p1) * x(i,j) =e= 0;
+ 382   
+ 383  * CMB 5b & 5c for stages above the feed excluding condenser, may / may not include reflux stage
+ 384  * how to settle liq comp for re-entry
+ 385  cmbref(i,j)$above_feed(i)..   l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i,j) - v(i-1)*y(i,j) - (vref(i)*x(i,j))$iref(i) =e= 0;
+ 386   
+ 387  * CMB 5d for feed stage
+ 388  cmbf(i,j) ..                   l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i,j) - v(i-1)*y(i,j) - (feed(i)*xf(j))$floc =e= 0;
+ 389   
+ 390  * CMB 5e,f for stages below feed excluding reboiler, may / may not include boilup re-entrance
+ 391  cmbreb(i,j) ..                l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i,j) - v(i-1)*y(i,j) - (lbu(i)*x(i,j))$ireb(i) =e= 0;
+ 392   
+ 393  * CMB 5g for constraint on reboiler.
+ 394  cmbl(i,j)$reb(i) ..           l(i)*x(i,j) + v(i)*y(i,j) + (sum(bf, lbu(i)))*y(i,j) - l(i+1)*x(i+1,j) =e= 0;
+ 395   
+      Unnecessary for now
+      * Component Material for Reboiler
+      cmbl(i,j)$reb(i) ..         l(i)*x(i,j) + v(i)*y(i,j) - l(i+1)*x(i+1,j) =e= 0;
+       
+      * Component Material Balance for Condenser
+      cmbn(i,j)$con(i) ..      l(i)*x(i,j) + p1*x(i,j) - v(i-1)*y(i-1,j) =e= 0;
+ 404   
+ 405  * (6) ENTHALPY BALANCES
+ 406  * Define equations to calculate enthalpy balances for vapor and liquid on each tray
+ 407  * Specific heat capacity, CpL = a + b*T +c*power(T,2) + d*power(T,3) + e*power(T,4)
+ 408  * For PO in J/mol.K : a + b*T + c*power(T,2)
+ 409   
+      defhl(i) ..             hl(i) -( h_liq(t(i), p(i), x(i,'methanol'), x(i,'water'), x(i,'PO')) ) =e= 0;
+      defhv(i) ..             hv(i) -( h_vap(t(i), p(i), y(i,'methanol'), y(i,'water'), y(i,'PO')) ) =e= 0;
+ 414   
+      may not need this, can use thermodynamic librari
+      defhl(i) ..             hl(i) - (cpconl(j,'a') + cpconl(j,'b')*t(i) + cpconl(j,'c')*(t(i)**2) + cpconl(j,'d')*(t(i)**3) + cpconl(j,'e')*(t(i)**4));                   
+      defhv(i) ..                
+ 420   
+ 421  * EB 6a,6b for possible candidates for reflux, may / may not include reflux stage
+ 422   
+ 423  eb(i)$col(i) ..          l(i)*hl(i) + v(i)*hv(i) - l(i+1)*hl(i+1) - v(i-1)*hv(i-1) - (feed(i)*shf)$floc =e= 0;
+ 424   
+ 425  * EB 6c for feed stage
+ 426   
+ 427  * EB 6d, 6e for possible candidates for boilup reentry
+ 428   
+ 429  * Reflux entering only on one tray
+ 430   
+ 431  * Reboiled vapor entering only on one tray
+ 432   
+ 433  * Pressure profiles
+ 434   
+ 435  * Purity Constraint on PO
+ 436  purcon .. x('9', 'PO') =g= 0.85;
+ 437   
+ 438  * assigns lower, upper bounds and initial conditions to
+ 439  * reflux ratio, top product rate and bottom product rate
+ 440   
+ 441  r.l      = 6;
+ 442  r.up     = 8;
+ 443  r.lo     = 5;
+ 444   
+ 445  p1.l     = 2000;
+ 446  p1.up    = 3000;
+ 447  p1.lo    = 4000;
+ 448   
+ 449  p2.l     = 4000;
+ 450  p2.up    = 6000;
+ 451  p2.lo    = 7000;
+ 452   
+ 453  * set upper limits for mole fractions
+ 454   
+ 455  x.up(i,j) = 1.0;
+ 456  y.up(i,j) = 1.0;
+ 457   
       * Additional variables / equations for feed tray location problem;
       Binary Variable yf(i);
- 357   
- 358  Variable zf;
- 359   
-      Equation
-        sumby         'sum of binary variables in vapor phase in feed'
-        sumbl         'sum of binart variables in liquid phase in feed'
-        confeed(i)    'constraint on feed'
-        obj2          'second objective function'  ;
-       
-      * Binary variables in feed for both liquid and vapor phases should add up to 1
-      sum(i$floc(i), yf(i))
- 370   
- 371  Model column 'ideal number of stages' / all /;
- 372  Solve column using minlp maximizing zf;
-****                                        $257
-**** 257  Solve statement not checked because of previous errors
+ 462   
+ 463  Variable zf;
+ 464   
+ 465  Model column 'ideal number of stages' / all /;
+ 466  Solve column using minlp maximizing zf;
+****                                        $66,71,66,71,256
+****  66  The symbol shown has not been defined or assigned
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+****  71  The symbol shown has been declared as an equation, but no
+****         Symbolic equation (..) was found. hint - look for commas in the
+****         Documentation text for the equations. use quotes around the
+****         Text or eliminate the commas.
+**** 256  Error(s) in analyzing solve statement. More detail appears
+****      Below the solve statement above
+**** The following MINLP errors were detected in model column:
+****  66 equation tmbref.. symbol "iref" has no values assigned
+****  66 equation tmbreb.. symbol "ireb" has no values assigned
+****  71 tmb is an undefined equation
+****  71 tmbn is an undefined equation
+****  71 cmbn is an undefined equation
+****  71 defhl is an undefined equation
+****  71 defhv is an undefined equation
+****  66 equation eb.. symbol "shf" has no values assigned
+****  71 sumf is an undefined equation
 
-**** 2 ERROR(S)   0 WARNING(S)
-GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 02/28/19 17:21:43 Page 2
+**** 5 ERROR(S)   0 WARNING(S)
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/01/19 13:44:59 Page 2
 Determining Theoretical Trays Required for Propylene Oxide (PO) Separation
 Include File Summary
 
 
    SEQ   GLOBAL TYPE      PARENT   LOCAL  FILENAME
 
-     1        1 INPUT          0       0  D:\Software\GAMS\GAMS Studio Workspace\gamsdir\projdir\dist_col.gms
-     2       91 FUNCLIBIN      1      91  NRTLideal.dll
+     1        1 INPUT          0       0  D:\Software\GAMS\GAMS Studio Workspace\gamsdir\projdir\opt-po-dist\dist_col.gms
+     2       76 FUNCLIBIN      1      76  NRTLideal.dll
 
 
 COMPILATION TIME     =        0.031 SECONDS      3 MB  25.1.3 r4e34d435fbd WEX-WEI
@@ -389,7 +479,7 @@ USER: GAMS Development Corporation, USA              G871201/0000CA-ANY
 
 **** FILE SUMMARY
 
-Input      D:\Software\GAMS\GAMS Studio Workspace\gamsdir\projdir\dist_col.gms
-Output     D:\Software\GAMS\GAMS Studio Workspace\gamsdir\projdir\dist_col.lst
+Input      D:\Software\GAMS\GAMS Studio Workspace\gamsdir\projdir\opt-po-dist\dist_col.gms
+Output     D:\Software\GAMS\GAMS Studio Workspace\gamsdir\projdir\opt-po-dist\dist_col.lst
 
 **** USER ERROR(S) ENCOUNTERED
