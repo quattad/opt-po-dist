@@ -1,2 +1,49 @@
 B 2 System --- Multicomponent with PO as light key and Methanol as heavy key at 2bar - 2.6bar.
-B 463 Include File Summary
+B 505 Include File Summary
+B 517 Equation Listing    SOLVE column Using MINLP From line 528
+D 518 phe1
+D 532 phe2
+D 545 phe3
+D 558 errk
+D 569 tmbc
+D 580 tmbf
+D 591 tmbref
+D 602 tmbreb
+D 613 tmbl
+D 618 defln
+D 623 defp2
+D 628 defvn
+D 633 defref
+D 644 cmb
+D 655 cmbf
+D 666 cmbref
+D 677 cmbreb
+D 688 cmbl
+D 699 defhl
+D 710 defhv
+D 721 refmax
+D 732 rebmax
+D 743 refcheck
+D 754 rebcheck
+D 765 eb
+D 776 purcon
+D 781 sumf
+D 786 obj
+B 799 Column Listing      SOLVE column Using MINLP From line 528
+E 800 x
+E 841 y
+E 884 l
+E 981 v
+E 1084 t
+E 1114 feed
+E 1145 r
+E 1165 p1
+E 1208 p2
+E 1220 lref
+E 1254 lbu
+E 1292 hl
+E 1311 hv
+E 1332 obj2
+E 1347 zref
+E 1376 zbu
+B 1420 Model Statistics    SOLVE column Using MINLP From line 528
