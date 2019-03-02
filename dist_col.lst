@@ -1,4 +1,4 @@
-GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 16:58:52 Page 1
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 17:08:28 Page 1
 Determining Theoretical Trays Required for Propylene Oxide (PO) Separation
 System --- Multicomponent with PO as light key and Methanol as heavy key at 2bar - 2.6bar.
 
@@ -440,68 +440,62 @@ NLP  f3_vap(temperature [k],pressure [bar],methanol,water,1,2-propylene oxide)va
  465  * 9a - 9e addressed in earlier pressure declaration
  466  * Enter constraints later on when successful compilation has been achieved
  467   
- 468  * 9f
- 469   
- 470  * 9g
- 471   
- 472  * 9h
+ 468  * (10) PURITY CONSTRAINTS
+ 469  purcon ..            x('9', 'PO') =g= 0.85;
+ 470   
+ 471  * SUM OF FEEDS
+ 472  sumf..              sum(i$floc, feed(i)) =e= f;
  473   
- 474  * (10) PURITY CONSTRAINTS
- 475  purcon ..            x('9', 'PO') =g= 0.85;
- 476   
- 477  * SUM OF FEEDS
- 478  sumf..              sum(i$floc, feed(i)) =e= f;
- 479   
- 480  * DECLARING OBJECTIVE FUNCTION
- 481  * Objective function is a summation of 1) number of trays in a column and 2) reflux ratio. Therefore optimization instruction will be to minimize the sum of both.
- 482  obj(i)..       obj2 =e= r + sum(i2, ord(i)*zref(i));
+ 474  * DECLARING OBJECTIVE FUNCTION
+ 475  * Objective function is a summation of 1) number of trays in a column and 2) reflux ratio. Therefore optimization instruction will be to minimize the sum of both.
+ 476  obj(i)..       obj2 =e= r + sum(i2, ord(i)*zref(i));
+ 477   
+ 478  * PARAMETER DECLARATIONS
+ 479  * Reflux Ratio
+ 480  r.l      = 6;
+ 481  r.up     = 8;
+ 482  r.lo     = 3;
  483   
- 484  * PARAMETER DECLARATIONS
- 485  * Reflux Ratio
- 486  r.l      = 6;
- 487  r.up     = 8;
- 488  r.lo     = 3;
- 489   
- 490  * Top Product Molar Flow Rate
- 491  p1.l     = 2000;
- 492  p1.up    = 3000;
- 493  p1.lo    = 4000;
- 494   
- 495  * Bottom Product Molar Flow Rate
- 496  p2.l     = 4000;
- 497  p2.up    = 6000;
- 498  p2.lo    = 7000;
- 499   
- 500  * Vapor Flow Rate
- 501  v.l(i)    = ((r.l + 1)*p1.l);
- 502   
- 503  * Liquid Flow Rate
- 504  l.l(i)$reb(i)    = p2.l;
- 505  l.l(i)$(below_feed(i)- reb(i)) = p1.l*r.l + (1 - vf)*f;
- 506  l.l(i)$above_feed(i) = p1.l*r.l;
- 507   
- 508  * Temperature
- 509  t.l(i)$reb(i)    = treb;
- 510  t.l(i)$con(i)    = tcon;
- 511  t.l(i)$col(i)    = tbot + (ttop - tbot)*(ord(i) - 2)/(card(i) - 1 - 2);
- 512  t.lo(i) = tcon - 10;
- 513  t.up(i) = treb + 10;
+ 484  * Top Product Molar Flow Rate 2000 3000 400
+ 485  p1.l     = 3000;
+ 486  p1.up    = 4000;
+ 487  p1.lo    = 2000;
+ 488   
+ 489  * Bottom Product Molar Flow Rate 4000 6000 7000
+ 490  p2.l     = 6000;
+ 491  p2.up    = 7000;
+ 492  p2.lo    = 4000;
+ 493   
+ 494  * Vapor Flow Rate
+ 495  v.l(i)    = ((r.l + 1)*p1.l);
+ 496   
+ 497  * Liquid Flow Rate
+ 498  l.l(i)$reb(i)    = p2.l;
+ 499  l.l(i)$(below_feed(i)- reb(i)) = p1.l*r.l + (1 - vf)*f;
+ 500  l.l(i)$above_feed(i) = p1.l*r.l;
+ 501   
+ 502  * Temperature
+ 503  t.l(i)$reb(i)    = treb;
+ 504  t.l(i)$con(i)    = tcon;
+ 505  t.l(i)$col(i)    = tbot + (ttop - tbot)*(ord(i) - 2)/(card(i) - 1 - 2);
+ 506  t.lo(i) = tcon - 10;
+ 507  t.up(i) = treb + 10;
+ 508   
+ 509  * Liquid Mole Fractions
+ 510  x.up(i,j) = 1.0;
+ 511  x.l(i,'methanol') = 0.90 - 0.5*(ord(i) - card(i))/(1 - card(i));
+ 512  x.l(i,'water') = 1 - 0.1 - x.l(i,'water');
+ 513  x.l(i,'PO') = 0.1;
  514   
- 515  * Liquid Mole Fractions
- 516  x.up(i,j) = 1.0;
- 517  x.l(i,'methanol') = 0.90 - 0.5*(ord(i) - card(i))/(1 - card(i));
- 518  x.l(i,'water') = 1 - 0.1 - x.l(i,'water');
- 519  x.l(i,'PO') = 0.1;
+ 515  * Vapor Mole Fractions
+ 516  y.up(i,j) = 1.0;
+ 517  y.l(i,'methanol') = 1.0 - 0.8*(ord(i) - card(i))/(1 - card(i));
+ 518  y.l(i,'water') = 1 - y.l(i,'water') - 0.1;
+ 519  y.l(i,'PO') = 0.1
  520   
- 521  * Vapor Mole Fractions
- 522  y.up(i,j) = 1.0;
- 523  y.l(i,'methanol') = 1.0 - 0.8*(ord(i) - card(i))/(1 - card(i));
- 524  y.l(i,'water') = 1 - y.l(i,'water') - 0.1;
- 525  y.l(i,'PO') = 0.1
- 526   
- 527  Model column 'ideal number of stages' / all /;
- 528  Solve column using minlp minimizing obj2;
-GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 16:58:52 Page 2
+ 521  Model column 'ideal number of stages' / all /;
+ 522  Solve column using minlp minimizing obj2;
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 17:08:28 Page 2
 Determining Theoretical Trays Required for Propylene Oxide (PO) Separation
 Include File Summary
 
@@ -513,9 +507,9 @@ Include File Summary
 
 
 COMPILATION TIME     =        0.016 SECONDS      3 MB  25.1.3 r4e34d435fbd WEX-WEI
-GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 16:58:52 Page 3
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 17:08:28 Page 3
 Determining Theoretical Trays Required for Propylene Oxide (PO) Separation
-Equation Listing    SOLVE column Using MINLP From line 528
+Equation Listing    SOLVE column Using MINLP From line 522
 
 
 ---- phe1  =E=  
@@ -570,18 +564,18 @@ REMAINING 6 ENTRIES SKIPPED
 
 ---- tmbc  =E=  total material balance for entire column
 
-tmbc(2)..  - l(2) + v(1) - p1 - 9*lref(2) =E= 0 ; (LHS = -8282, INFES = 8282 ****)
+tmbc(2)..  - l(2) + v(1) - p1 - 9*lref(2) =E= 0 ; (LHS = -6282, INFES = 6282 ****)
      
-tmbc(3)..  - l(3) + v(2) - p1 - 9*lref(3) =E= 0 ; (LHS = -8282, INFES = 8282 ****)
+tmbc(3)..  - l(3) + v(2) - p1 - 9*lref(3) =E= 0 ; (LHS = -6282, INFES = 6282 ****)
      
-tmbc(4)..  - l(4) + v(3) - p1 - 9*lref(4) =E= 0 ; (LHS = -8282, INFES = 8282 ****)
+tmbc(4)..  - l(4) + v(3) - p1 - 9*lref(4) =E= 0 ; (LHS = -6282, INFES = 6282 ****)
      
 REMAINING 4 ENTRIES SKIPPED
 
 
 ---- tmbf  =E=  total material balance for feed stage
 
-tmbf(1)..  l(1) - l(2) + v(1) - feed(1) =E= 0 ; (LHS = 7718, INFES = 7718 ****)
+tmbf(1)..  l(1) - l(2) + v(1) - feed(1) =E= 0 ; (LHS = 14718, INFES = 14718 ****)
      
 tmbf(2)..  l(2) - l(3) - v(1) + v(2) - feed(2) =E= 0 ; (LHS = 0)
      
@@ -592,7 +586,7 @@ REMAINING 6 ENTRIES SKIPPED
 
 ---- tmbref  =E=  total material balance for possible candidates for reflux
 
-tmbref(1)..  l(1) - l(2) + v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 7718, INFES = 7718 ****)
+tmbref(1)..  l(1) - l(2) + v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 14718, INFES = 14718 ****)
      
 tmbref(6)..  l(6) - l(7) - v(5) + v(6) + (0)*lref(6) + (0)*zref(6) =E= 0 ; (LHS = 0)
      
@@ -603,7 +597,7 @@ REMAINING ENTRY SKIPPED
 
 ---- tmbreb  =E=  total material balance for possible candidates for boil-up re-entry
 
-tmbreb(1)..  l(1) - l(2) + v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 7718, INFES = 7718 ****)
+tmbreb(1)..  l(1) - l(2) + v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 14718, INFES = 14718 ****)
      
 tmbreb(2)..  l(2) - l(3) - v(1) + v(2) + (0)*lbu(2) + (0)*zbu(2) =E= 0 ; (LHS = 0)
      
@@ -614,86 +608,86 @@ REMAINING 6 ENTRIES SKIPPED
 
 ---- tmbl  =E=  total material balance for reboiler
 
-tmbl(1)..  l(1) - l(2) + v(1) + 4*lbu(1) =E= 0 ; (LHS = 7718, INFES = 7718 ****)
+tmbl(1)..  l(1) - l(2) + v(1) + 4*lbu(1) =E= 0 ; (LHS = 14718, INFES = 14718 ****)
      
 
 ---- defln  =E=  definition of l(n) i.e. l out of condenser
 
-defln(9)..  l(9) - (4000)*r - (6)*p1 =E= 0 ; (LHS = -24000, INFES = 24000 ****)
+defln(9)..  l(9) - (3000)*r - (6)*p1 =E= 0 ; (LHS = -18000, INFES = 18000 ****)
      
 
 ---- defp2  =E=  definition of p2 i.e. l out of reboiler
 
-defp2(1)..  l(1) - p2 =E= 0 ; (LHS = 5000, INFES = 5000 ****)
+defp2(1)..  l(1) - p2 =E= 0 ; (LHS = 12000, INFES = 12000 ****)
      
 
 ---- defvn  =E=  definition of v(n) i.e. v out of condenser, which should be zero
 
-defvn(9)..  v(9) =E= 0 ; (LHS = 14000, INFES = 14000 ****)
+defvn(9)..  v(9) =E= 0 ; (LHS = 21000, INFES = 21000 ****)
      
 
 ---- defref  =E=  definition of reflux re-entering column
 
-defref(1)..  - (7000)*r - (6)*p2 + 9*lref(1) =E= 0 ; (LHS = -42000, INFES = 42000 ****)
+defref(1)..  - (6000)*r - (6)*p2 + 9*lref(1) =E= 0 ; (LHS = -36000, INFES = 36000 ****)
      
-defref(6)..  - (7000)*r - (6)*p2 + 9*lref(6) =E= 0 ; (LHS = -42000, INFES = 42000 ****)
+defref(6)..  - (6000)*r - (6)*p2 + 9*lref(6) =E= 0 ; (LHS = -36000, INFES = 36000 ****)
      
-defref(7)..  - (7000)*r - (6)*p2 + 9*lref(7) =E= 0 ; (LHS = -42000, INFES = 42000 ****)
+defref(7)..  - (6000)*r - (6)*p2 + 9*lref(7) =E= 0 ; (LHS = -36000, INFES = 36000 ****)
      
 REMAINING ENTRY SKIPPED
 
 
 ---- cmb  =E=  component material balance (1 < i < n)
 
-cmb(2,methanol)..  - (22282)*x(2,methanol) + (14000)*y(1,methanol) - (0.4625)*l(2) + (0.2)*v(1) - (0.4625)*p1 - (4.1625)*lref(2) =E= 0 ; (LHS = -7505.425, INFES = 7505.425 ****)
+cmb(2,methanol)..  - (27282)*x(2,methanol) + (21000)*y(1,methanol) - (0.4625)*l(2) + (0.2)*v(1) - (0.4625)*p1 - (4.1625)*lref(2) =E= 0 ; (LHS = -8417.925, INFES = 8417.925 ****)
      
-cmb(2,water)..  - (22282)*x(2,water) + (14000)*y(1,water) - (0.9)*l(2) + (0.9)*v(1) - (0.9)*p1 - (8.1)*lref(2) =E= 0 ; (LHS = -7453.8, INFES = 7453.8 ****)
+cmb(2,water)..  - (27282)*x(2,water) + (21000)*y(1,water) - (0.9)*l(2) + (0.9)*v(1) - (0.9)*p1 - (8.1)*lref(2) =E= 0 ; (LHS = -5653.8, INFES = 5653.8 ****)
      
-cmb(2,PO)..  - (22282)*x(2,PO) + (14000)*y(1,PO) - (0.1)*l(2) + (0.1)*v(1) - (0.1)*p1 - (0.9)*lref(2) =E= 0 ; (LHS = -828.2, INFES = 828.2 ****)
+cmb(2,PO)..  - (27282)*x(2,PO) + (21000)*y(1,PO) - (0.1)*l(2) + (0.1)*v(1) - (0.1)*p1 - (0.9)*lref(2) =E= 0 ; (LHS = -628.2, INFES = 628.2 ****)
      
 REMAINING 25 ENTRIES SKIPPED
 
 
 ---- cmbf  =E=  component material balance for feed stage
 
-cmbf(1,methanol)..  - (6282)*x(1,methanol) + (14000)*y(1,methanol) + (0.4)*l(1) - (0.4)*l(2) + (0.2)*v(1) - 0.7515*feed(1) =E= 0 ; (LHS = 287.2, INFES = 287.2 ****)
+cmbf(1,methanol)..  - (6282)*x(1,methanol) + (21000)*y(1,methanol) + (0.4)*l(1) - (0.4)*l(2) + (0.2)*v(1) - 0.7515*feed(1) =E= 0 ; (LHS = 1687.2, INFES = 1687.2 ****)
      
-cmbf(1,water)..  - (6282)*x(1,water) + (14000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) - 0.1292*feed(1) =E= 0 ; (LHS = 6946.2, INFES = 6946.2 ****)
+cmbf(1,water)..  - (6282)*x(1,water) + (21000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) - 0.1292*feed(1) =E= 0 ; (LHS = 13246.2, INFES = 13246.2 ****)
      
-cmbf(1,PO)..  - (6282)*x(1,PO) + (14000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) - 0.1073*feed(1) =E= 0 ; (LHS = 771.8, INFES = 771.8 ****)
+cmbf(1,PO)..  - (6282)*x(1,PO) + (21000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) - 0.1073*feed(1) =E= 0 ; (LHS = 1471.8, INFES = 1471.8 ****)
      
 REMAINING 33 ENTRIES SKIPPED
 
 
 ---- cmbref  =E=  component material balance for possible stages for reflux
 
-cmbref(1,methanol)..  - (6282)*x(1,methanol) + (14000)*y(1,methanol) + (0.4)*l(1) - (0.4)*l(2) + (0.2)*v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 287.2, INFES = 287.2 ****)
+cmbref(1,methanol)..  - (6282)*x(1,methanol) + (21000)*y(1,methanol) + (0.4)*l(1) - (0.4)*l(2) + (0.2)*v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 1687.2, INFES = 1687.2 ****)
      
-cmbref(1,water)..  - (6282)*x(1,water) + (14000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 6946.2, INFES = 6946.2 ****)
+cmbref(1,water)..  - (6282)*x(1,water) + (21000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 13246.2, INFES = 13246.2 ****)
      
-cmbref(1,PO)..  - (6282)*x(1,PO) + (14000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 771.8, INFES = 771.8 ****)
+cmbref(1,PO)..  - (6282)*x(1,PO) + (21000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) + (0)*lref(1) + (0)*zref(1) =E= 0 ; (LHS = 1471.8, INFES = 1471.8 ****)
      
 REMAINING 13 ENTRIES SKIPPED
 
 
 ---- cmbreb  =E=  component material balance for possible stages for boilup reentry
 
-cmbreb(1,methanol)..  - (6282)*x(1,methanol) + (14000)*y(1,methanol) + (0.4)*l(1) - (0.4)*l(2) + (0.2)*v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 287.2, INFES = 287.2 ****)
+cmbreb(1,methanol)..  - (6282)*x(1,methanol) + (21000)*y(1,methanol) + (0.4)*l(1) - (0.4)*l(2) + (0.2)*v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 1687.2, INFES = 1687.2 ****)
      
-cmbreb(1,water)..  - (6282)*x(1,water) + (14000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 6946.2, INFES = 6946.2 ****)
+cmbreb(1,water)..  - (6282)*x(1,water) + (21000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 13246.2, INFES = 13246.2 ****)
      
-cmbreb(1,PO)..  - (6282)*x(1,PO) + (14000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 771.8, INFES = 771.8 ****)
+cmbreb(1,PO)..  - (6282)*x(1,PO) + (21000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) + (0)*lbu(1) + (0)*zbu(1) =E= 0 ; (LHS = 1471.8, INFES = 1471.8 ****)
      
 REMAINING 33 ENTRIES SKIPPED
 
 
 ---- cmbl  =E=  component material balance on first tray
 
-cmbl(1,methanol)..  (12000)*x(1,methanol) - (18282)*x(2,methanol) + (14000)*y(1,methanol) + (0.4)*l(1) - (0.4625)*l(2) + (0.2)*v(1) + (0.8)*lbu(1) =E= 0 ; (LHS = -855.425000000001, INFES = 855.425000000001 ****)
+cmbl(1,methanol)..  (18000)*x(1,methanol) - (24282)*x(2,methanol) + (21000)*y(1,methanol) + (0.4)*l(1) - (0.4625)*l(2) + (0.2)*v(1) + (0.8)*lbu(1) =E= 0 ; (LHS = 169.574999999999, INFES = 169.574999999999 ****)
      
-cmbl(1,water)..  (12000)*x(1,water) - (18282)*x(2,water) + (14000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) + (3.6)*lbu(1) =E= 0 ; (LHS = 6946.2, INFES = 6946.2 ****)
+cmbl(1,water)..  (18000)*x(1,water) - (24282)*x(2,water) + (21000)*y(1,water) + (0.9)*l(1) - (0.9)*l(2) + (0.9)*v(1) + (3.6)*lbu(1) =E= 0 ; (LHS = 13246.2, INFES = 13246.2 ****)
      
-cmbl(1,PO)..  (12000)*x(1,PO) - (18282)*x(2,PO) + (14000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) + (0.4)*lbu(1) =E= 0 ; (LHS = 771.8, INFES = 771.8 ****)
+cmbl(1,PO)..  (18000)*x(1,PO) - (24282)*x(2,PO) + (21000)*y(1,PO) + (0.1)*l(1) - (0.1)*l(2) + (0.1)*v(1) + (0.4)*lbu(1) =E= 0 ; (LHS = 1471.8, INFES = 1471.8 ****)
      
 REMAINING ENTRY SKIPPED
 
@@ -766,11 +760,11 @@ REMAINING 6 ENTRIES SKIPPED
 
 ---- eb  =E=  enthalpy balance
 
-eb(2)..  (0)*x(2,methanol) + (0)*x(2,water) + (0)*x(2,PO) + (0)*l(2) + (0)*l(3) + (0)*v(1) + (0)*v(2) + (0)*t(2) + (0)*lref(2) + (0)*lbu(2) + (18282)*hl(2) - (18282)*hl(3) - (14000)*hv(1) + (14000)*hv(2) + (0)*zref(2) + (0)*zbu(2) =E= 0 ; (LHS = 0)
+eb(2)..  (0)*x(2,methanol) + (0)*x(2,water) + (0)*x(2,PO) + (0)*l(2) + (0)*l(3) + (0)*v(1) + (0)*v(2) + (0)*t(2) + (0)*lref(2) + (0)*lbu(2) + (24282)*hl(2) - (24282)*hl(3) - (21000)*hv(1) + (21000)*hv(2) + (0)*zref(2) + (0)*zbu(2) =E= 0 ; (LHS = 0)
      
-eb(3)..  (0)*x(3,methanol) + (0)*x(3,water) + (0)*x(3,PO) + (0)*l(3) + (0)*l(4) + (0)*v(2) + (0)*v(3) + (0)*t(3) + (0)*lref(3) + (0)*lbu(3) + (18282)*hl(3) - (18282)*hl(4) - (14000)*hv(2) + (14000)*hv(3) + (0)*zref(3) + (0)*zbu(3) =E= 0 ; (LHS = 0)
+eb(3)..  (0)*x(3,methanol) + (0)*x(3,water) + (0)*x(3,PO) + (0)*l(3) + (0)*l(4) + (0)*v(2) + (0)*v(3) + (0)*t(3) + (0)*lref(3) + (0)*lbu(3) + (24282)*hl(3) - (24282)*hl(4) - (21000)*hv(2) + (21000)*hv(3) + (0)*zref(3) + (0)*zbu(3) =E= 0 ; (LHS = 0)
      
-eb(4)..  (0)*x(4,methanol) + (0)*x(4,water) + (0)*x(4,PO) + (0)*l(4) + (0)*l(5) + (0)*v(3) + (0)*v(4) + (0)*t(4) + (0)*lref(4) + (0)*lbu(4) + (18282)*hl(4) - (18282)*hl(5) - (14000)*hv(3) + (14000)*hv(4) + (0)*zref(4) + (0)*zbu(4) =E= 0 ; (LHS = 0)
+eb(4)..  (0)*x(4,methanol) + (0)*x(4,water) + (0)*x(4,PO) + (0)*l(4) + (0)*l(5) + (0)*v(3) + (0)*v(4) + (0)*t(4) + (0)*lref(4) + (0)*lbu(4) + (24282)*hl(4) - (24282)*hl(5) - (21000)*hv(3) + (21000)*hv(4) + (0)*zref(4) + (0)*zbu(4) =E= 0 ; (LHS = 0)
      
 REMAINING 4 ENTRIES SKIPPED
 
@@ -795,9 +789,9 @@ obj(3)..  - r + obj2 - 27*zref(3) =E= 0 ; (LHS = -6, INFES = 6 ****)
      
 REMAINING 6 ENTRIES SKIPPED
 
-GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 16:58:52 Page 4
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 17:08:28 Page 4
 Determining Theoretical Trays Required for Propylene Oxide (PO) Separation
-Column Listing      SOLVE column Using MINLP From line 528
+Column Listing      SOLVE column Using MINLP From line 522
 
 
 ---- x  mole fraction of component j in liquid on ith tray
@@ -811,7 +805,7 @@ x(1,methanol)
    (-6282)      cmbf(1,methanol)
    (-6282)      cmbref(1,methanol)
    (-6282)      cmbreb(1,methanol)
-   (12000)      cmbl(1,methanol)
+   (18000)      cmbl(1,methanol)
   (230974.4686) defhl(1)
 
 x(1,water)
@@ -823,7 +817,7 @@ x(1,water)
    (-6282)      cmbf(1,water)
    (-6282)      cmbref(1,water)
    (-6282)      cmbreb(1,water)
-   (12000)      cmbl(1,water)
+   (18000)      cmbl(1,water)
   (281091.5334) defhl(1)
 
 x(1,PO)
@@ -835,7 +829,7 @@ x(1,PO)
    (-6282)      cmbf(1,PO)
    (-6282)      cmbref(1,PO)
    (-6282)      cmbreb(1,PO)
-   (12000)      cmbl(1,PO)
+   (18000)      cmbl(1,PO)
   (111897.5155) defhl(1)
 
 REMAINING 33 ENTRIES SKIPPED
@@ -848,11 +842,11 @@ y(1,methanol)
        (0)      phe2(1)
        (0)      phe3(1)
        -1       errk(1)
-   (14000)      cmb(2,methanol)
-   (14000)      cmbf(1,methanol)
-   (14000)      cmbref(1,methanol)
-   (14000)      cmbreb(1,methanol)
-   (14000)      cmbl(1,methanol)
+   (21000)      cmb(2,methanol)
+   (21000)      cmbf(1,methanol)
+   (21000)      cmbref(1,methanol)
+   (21000)      cmbreb(1,methanol)
+   (21000)      cmbl(1,methanol)
   (198092.7577) defhv(1)
 
 y(1,water)
@@ -861,11 +855,11 @@ y(1,water)
       (-2.07)   phe2(1)
        (0)      phe3(1)
        -1       errk(1)
-   (14000)      cmb(2,water)
-   (14000)      cmbf(1,water)
-   (14000)      cmbref(1,water)
-   (14000)      cmbreb(1,water)
-   (14000)      cmbl(1,water)
+   (21000)      cmb(2,water)
+   (21000)      cmbf(1,water)
+   (21000)      cmbref(1,water)
+   (21000)      cmbreb(1,water)
+   (21000)      cmbl(1,water)
   (239737.7958) defhv(1)
 
 y(1,PO)
@@ -874,11 +868,11 @@ y(1,PO)
        (0)      phe2(1)
       (-2.07)   phe3(1)
        -1       errk(1)
-   (14000)      cmb(2,PO)
-   (14000)      cmbf(1,PO)
-   (14000)      cmbref(1,PO)
-   (14000)      cmbreb(1,PO)
-   (14000)      cmbl(1,PO)
+   (21000)      cmb(2,PO)
+   (21000)      cmbf(1,PO)
+   (21000)      cmbref(1,PO)
+   (21000)      cmbreb(1,PO)
+   (21000)      cmbl(1,PO)
    (88820.834)  defhv(1)
 
 REMAINING 33 ENTRIES SKIPPED
@@ -886,7 +880,7 @@ REMAINING 33 ENTRIES SKIPPED
 ---- l  molar flow rate of liquid leaving tray i
 
 l(1)
-                (.LO, .L, .UP, .M = 0, 12000, +INF, 0)
+                (.LO, .L, .UP, .M = 0, 18000, +INF, 0)
         1       tmbf(1)
         1       tmbref(1)
         1       tmbreb(1)
@@ -910,7 +904,7 @@ l(1)
        (0)      cmbl(1,PG)
 
 l(2)
-                (.LO, .L, .UP, .M = 0, 18282, +INF, 0)
+                (.LO, .L, .UP, .M = 0, 24282, +INF, 0)
        -1       tmbc(2)
        -1       tmbf(1)
         1       tmbf(2)
@@ -949,7 +943,7 @@ l(2)
        (0)      eb(2)
 
 l(3)
-                (.LO, .L, .UP, .M = 0, 18282, +INF, 0)
+                (.LO, .L, .UP, .M = 0, 24282, +INF, 0)
        -1       tmbc(3)
        -1       tmbf(2)
         1       tmbf(3)
@@ -983,7 +977,7 @@ REMAINING 6 ENTRIES SKIPPED
 ---- v  molar flow rate of vapor leaving tray i
 
 v(1)
-                (.LO, .L, .UP, .M = 0, 14000, +INF, 0)
+                (.LO, .L, .UP, .M = 0, 21000, +INF, 0)
         1       tmbc(2)
         1       tmbf(1)
        -1       tmbf(2)
@@ -1022,7 +1016,7 @@ v(1)
        (0)      eb(2)
 
 v(2)
-                (.LO, .L, .UP, .M = 0, 14000, +INF, 0)
+                (.LO, .L, .UP, .M = 0, 21000, +INF, 0)
         1       tmbc(3)
         1       tmbf(2)
        -1       tmbf(3)
@@ -1052,7 +1046,7 @@ v(2)
        (0)      eb(3)
 
 v(3)
-                (.LO, .L, .UP, .M = 0, 14000, +INF, 0)
+                (.LO, .L, .UP, .M = 0, 21000, +INF, 0)
         1       tmbc(4)
         1       tmbf(3)
        -1       tmbf(4)
@@ -1148,11 +1142,11 @@ REMAINING 6 ENTRIES SKIPPED
 
 r
                 (.LO, .L, .UP, .M = 3, 6, 8, 0)
-   (-4000)      defln(9)
-   (-7000)      defref(1)
-   (-7000)      defref(6)
-   (-7000)      defref(7)
-   (-7000)      defref(8)
+   (-3000)      defln(9)
+   (-6000)      defref(1)
+   (-6000)      defref(6)
+   (-6000)      defref(7)
+   (-6000)      defref(8)
        -1       obj(1)
        -1       obj(2)
        -1       obj(3)
@@ -1167,7 +1161,7 @@ r
 ---- p1  top product rate
 
 p1
-                (.LO, .L, .UP, .M = 4000, 4000, 3000, 0)
+                (.LO, .L, .UP, .M = 2000, 3000, 4000, 0)
        -1       tmbc(2)
        -1       tmbc(3)
        -1       tmbc(4)
@@ -1204,19 +1198,17 @@ p1
       (-0.9)    cmb(8,water)
       (-0.1)    cmb(8,PO)
        (0)      cmb(8,PG)
-     2000       (OLD LEVEL ****)
 
 
 ---- p2  bottom product rate
 
 p2
-                (.LO, .L, .UP, .M = 7000, 7000, 6000, 0)
+                (.LO, .L, .UP, .M = 4000, 6000, 7000, 0)
        -1       defp2(1)
       (-6)      defref(1)
       (-6)      defref(6)
       (-6)      defref(7)
       (-6)      defref(8)
-     4000       (OLD LEVEL ****)
 
 
 ---- lref  amount of reflux entering tray i
@@ -1300,13 +1292,13 @@ hl(1)
 hl(2)
                 (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
         1       defhl(2)
-   (18282)      eb(2)
+   (24282)      eb(2)
 
 hl(3)
                 (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
         1       defhl(3)
-  (-18282)      eb(2)
-   (18282)      eb(3)
+  (-24282)      eb(2)
+   (24282)      eb(3)
 
 REMAINING 6 ENTRIES SKIPPED
 
@@ -1315,19 +1307,19 @@ REMAINING 6 ENTRIES SKIPPED
 hv(1)
                 (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
         1       defhv(1)
-  (-14000)      eb(2)
+  (-21000)      eb(2)
 
 hv(2)
                 (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
         1       defhv(2)
-   (14000)      eb(2)
-  (-14000)      eb(3)
+   (21000)      eb(2)
+  (-21000)      eb(3)
 
 hv(3)
                 (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
         1       defhv(3)
-   (14000)      eb(3)
-  (-14000)      eb(4)
+   (21000)      eb(3)
+  (-21000)      eb(4)
 
 REMAINING 6 ENTRIES SKIPPED
 
@@ -1410,21 +1402,15 @@ zbu(3)
        (0)      eb(3)
 
 REMAINING 6 ENTRIES SKIPPED
-
-**** Matrix error - lower bound > upper bound
-p1   (.LO, .L, .UP = 4000, 2000, 3000)
-
-**** Matrix error - lower bound > upper bound
-p2   (.LO, .L, .UP = 7000, 4000, 6000)
-GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 16:58:52 Page 5
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows - 03/02/19 17:08:28 Page 5
 Determining Theoretical Trays Required for Propylene Oxide (PO) Separation
-Model Statistics    SOLVE column Using MINLP From line 528
+Model Statistics    SOLVE column Using MINLP From line 522
 
 
 MODEL STATISTICS
 
 BLOCKS OF EQUATIONS          28     SINGLE EQUATIONS          265
-BLOCKS OF VARIABLES          16     SINGLE VARIABLES          166  2 projected
+BLOCKS OF VARIABLES          16     SINGLE VARIABLES          166
 NON ZERO ELEMENTS         1,566     NON LINEAR N-Z          1,217
 DERIVATIVE POOL              20     CONSTANT POOL              26
 CODE LENGTH               2,588     DISCRETE VARIABLES         18
@@ -1441,6 +1427,6 @@ CODE LENGTH               2,588     DISCRETE VARIABLES         18
 
      GAMS Development Corporation, USA              G871201/0000CA-ANY
      Free Demo, +1 202-342-0180, support@gams.com, www.gams.com       
-     10522320000S                                                   00
+     10522321000S                                                   00
      01234567000000                                                   
      DC0000       Ref: Generated by Base            A Demo            

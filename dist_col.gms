@@ -482,14 +482,14 @@ r.up     = 8;
 r.lo     = 3;
 
 * Top Product Molar Flow Rate
-p1.l     = 2000;
-p1.up    = 3000;
-p1.lo    = 4000;
+p1.l     = 3000;
+p1.up    = 4000;
+p1.lo    = 2000;
 
 * Bottom Product Molar Flow Rate 
-p2.l     = 4000;
-p2.up    = 6000;
-p2.lo    = 7000;
+p2.l     = 6000;
+p2.up    = 7000;
+p2.lo    = 4000;
 
 * Vapor Flow Rate
 v.l(i)    = ((r.l + 1)*p1.l);
